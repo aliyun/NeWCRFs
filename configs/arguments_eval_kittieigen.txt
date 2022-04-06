@@ -1,0 +1,16 @@
+--model_name newcrfs_kittieigen
+--encoder large07
+--dataset kitti
+--input_height 352
+--input_width 1216
+--max_depth 80
+--do_kb_crop
+
+--data_path_eval datasets/kitti/
+--gt_path_eval datasets/kitti/
+--filenames_file_eval data_splits/eigen_test_files_with_gt.txt
+--min_depth_eval 1e-3
+--max_depth_eval 80
+--garg_crop
+
+--checkpoint_path model_zoo/model_kittieigen.ckpt

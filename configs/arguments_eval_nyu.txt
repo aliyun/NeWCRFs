@@ -1,0 +1,15 @@
+--model_name newscrf_nyu
+--encoder large07
+--dataset nyu
+--input_height 480
+--input_width 640
+--max_depth 10
+
+--data_path_eval datasets/nyu/official_splits/test/
+--gt_path_eval datasets/nyu/official_splits/test/
+--filenames_file_eval data_splits/nyudepthv2_test_files_with_gt.txt
+--min_depth_eval 1e-3
+--max_depth_eval 10
+--eigen_crop
+
+--checkpoint_path model_zoo/model_nyu.ckpt
