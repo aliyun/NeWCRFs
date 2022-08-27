@@ -186,6 +186,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # NeWCRFs model
     model = NewCRFDepth(version=args.encoder, inv_depth=False, max_depth=args.max_depth, pretrained=args.pretrain)
+
     model.train()
 
     num_params = sum([np.prod(p.size()) for p in model.parameters()])
