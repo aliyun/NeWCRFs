@@ -14,15 +14,15 @@ def separate_train_validate(l,percentage=70):
     return l2,l3
 import glob
 from pathlib import Path
-data_path = Path('/home/eposner/Repositories/NeWCRFs/Data')
+data_path = Path('/home/eposner/Repositories/NeWCRFs_erez/NeWCRFs/Data')
 
 
 files_list = []
 
 for folder in data_path.rglob('Train'):
     print(folder)
-    rgbs = sorted(list(Path(folder).rglob('*FrameB*.png')))
-    depth = sorted(list(Path(folder).rglob('*Depth*.png')))
+    rgbs = sorted(list(Path(folder).rglob('FrameB*.png')))
+    depth = sorted(list(Path(folder).rglob('Depth*.png')))
     for i, _ in enumerate(rgbs):
         # remove linebreak from a current name
         # linebreak is the last character of each line
