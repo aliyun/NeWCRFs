@@ -10,7 +10,7 @@ import random
 
 from utils import DistributedSamplerNoEvenlyDivisible
 
-max_max =  45000. / 255
+# max_max =  45000. / 255
 def _is_pil_image(img):
     return isinstance(img, Image.Image)
 
