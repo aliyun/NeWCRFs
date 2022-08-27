@@ -1,0 +1,15 @@
+--model_name newscrf_nyu
+--encoder large07
+--dataset colsim
+--input_height 480
+--input_width 640
+--max_depth 1
+--num_threads 1
+--data_path_eval Data
+--gt_path_eval Data
+--filenames_file_eval data_splits/colsim_test_files_with_gt.txt
+--min_depth_eval 1e-3
+--max_depth_eval 1
+--eigen_crop
+
+--checkpoint_path models/newcrfs_nyu/model_latest.ckpt

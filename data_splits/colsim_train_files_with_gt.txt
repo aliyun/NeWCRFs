@@ -1,0 +1,2 @@
+/home/eposner/Repositories/NeWCRFs/Data/SyntheticColon_II/Train/Frames_B1/FrameBuffer_0149.png /home/eposner/Repositories/NeWCRFs/Data/SyntheticColon_II/Train/Frames_B1/Depth_0149.png
+/home/eposner/Repositories/NeWCRFs/Data/SyntheticColon_II/Train/Frames_B9/FrameBuffer_0304.png /home/eposner/Repositories/NeWCRFs/Data/SyntheticColon_II/Train/Frames_B9/Depth_0304.png

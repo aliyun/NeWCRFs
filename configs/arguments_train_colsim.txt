@@ -1,0 +1,28 @@
+--mode train
+--model_name newcrfs_nyu
+--encoder large07
+--pretrain model_zoo/swin_transformer/swin_large_patch4_window7_224_22k.pth
+--dataset colsim
+--data_path Data
+--gt_path Data
+--filenames_file data_splits/colsim_train_files_with_gt.txt
+--batch_size 1
+--num_epochs 5000
+--learning_rate 2e-5
+--weight_decay 1e-2
+--adam_eps 1e-3
+--num_threads 0
+--input_height 480
+--input_width 640
+--max_depth 1
+--log_directory ./models/
+--dist_url tcp://127.0.0.1:2345
+--log_freq 2
+--do_online_eval
+--eval_freq 2
+--data_path_eval Data
+--gt_path_eval Data
+--filenames_file_eval data_splits/colsim_test_files_with_gt.txt
+--min_depth_eval 1e-3
+--max_depth_eval 1
+--eigen_crop
