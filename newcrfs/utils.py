@@ -72,7 +72,7 @@ inv_normalize = transforms.Normalize(
 )
 
 
-eval_metrics = ['silog', 'abs_rel', 'log10', 'rms', 'sq_rel', 'log_rms', 'd1', 'd2', 'd3']
+eval_metrics = ['silog', 'abs_rel', 'log10', 'rms', 'sq_rel', 'log_rms', 'd1', 'd2', 'd3','avg_error']
 
 
 def compute_errors(gt, pred):
@@ -80,6 +80,7 @@ def compute_errors(gt, pred):
     d1 = (thresh < 1.25).mean()
     d2 = (thresh < 1.25 ** 2).mean()
     d3 = (thresh < 1.25 ** 3).mean()
+    error = np.mean(np.abs(gt - pred))
 
     rms = (gt - pred) ** 2
     rms = np.sqrt(rms.mean())
@@ -96,7 +97,7 @@ def compute_errors(gt, pred):
     err = np.abs(np.log10(pred) - np.log10(gt))
     log10 = np.mean(err)
 
-    return [silog, abs_rel, log10, rms, sq_rel, log_rms, d1, d2, d3]
+    return [silog, abs_rel, log10, rms, sq_rel, log_rms, error, d1, d2, d3]
 
 
 class silog_loss(nn.Module):
@@ -105,6 +106,7 @@ class silog_loss(nn.Module):
         self.variance_focus = variance_focus
 
     def forward(self, depth_est, depth_gt, mask):
+        # return torch.abs(depth_est[mask] - depth_gt[mask]).mean()
         d = torch.log(depth_est[mask]) - torch.log(depth_gt[mask])
         return torch.sqrt((d ** 2).mean() - self.variance_focus * (d.mean() ** 2)) * 10.0
 

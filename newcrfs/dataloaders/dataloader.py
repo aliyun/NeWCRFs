@@ -10,7 +10,7 @@ import random
 
 from utils import DistributedSamplerNoEvenlyDivisible
 
-
+max_max =  45000. / 255
 def _is_pil_image(img):
     return isinstance(img, Image.Image)
 
@@ -49,7 +49,7 @@ class NewDataLoader(object):
                 self.eval_sampler = None
             self.data = DataLoader(self.testing_samples, 1,
                                    shuffle=False,
-                                   num_workers=1,
+                                   num_workers=args.num_threads,
                                    pin_memory=True,
                                    sampler=self.eval_sampler)
         
@@ -94,10 +94,15 @@ class DataLoadPreprocess(Dataset):
 
             image_path = os.path.join(self.args.data_path, rgb_file)
             depth_path = os.path.join(self.args.gt_path, depth_file)
-    
-            image = Image.open(image_path)
-            depth_gt = Image.open(depth_path)
-            
+
+            image = Image.open(image_path).convert("RGB")
+            # depth_gt = Image.open(depth_path)
+            depth_gt = np.array(Image.open(depth_path)) / 255 / 256  # please use this to load ground truth depth during training and testing
+            depth_gt = Image.fromarray(depth_gt)
+            newsize = (640, 480)
+            image = image.resize(newsize)
+            depth_gt = depth_gt.resize(newsize)
+
             if self.args.do_kb_crop is True:
                 height = image.height
                 width = image.width
@@ -127,10 +132,10 @@ class DataLoadPreprocess(Dataset):
             depth_gt = np.asarray(depth_gt, dtype=np.float32)
             depth_gt = np.expand_dims(depth_gt, axis=2)
 
-            if self.args.dataset == 'nyu':
-                depth_gt = depth_gt / 1000.0
-            else:
-                depth_gt = depth_gt / 256.0
+            # if self.args.dataset == 'nyu':
+            #     depth_gt = depth_gt / 1000.0
+            # else:
+            #     depth_gt = depth_gt / max_max
 
             if image.shape[0] != self.args.input_height or image.shape[1] != self.args.input_width:
                 image, depth_gt = self.random_crop(image, depth_gt, self.args.input_height, self.args.input_width)
@@ -143,17 +148,27 @@ class DataLoadPreprocess(Dataset):
             else:
                 data_path = self.args.data_path
 
-            image_path = os.path.join(data_path, "./" + sample_path.split()[0])
-            image = np.asarray(Image.open(image_path), dtype=np.float32) / 255.0
-
+            image_path = os.path.join(sample_path.split()[0])
+            image = Image.open(image_path).convert("RGB")
+            newsize = (640, 480)
+            image = image.resize(newsize)
+            image = np.asarray(image, dtype=np.float32)
             if self.mode == 'online_eval':
                 gt_path = self.args.gt_path_eval
                 depth_path = os.path.join(gt_path, "./" + sample_path.split()[1])
                 if self.args.dataset == 'kitti':
                     depth_path = os.path.join(gt_path, sample_path.split()[0].split('/')[0], sample_path.split()[1])
+                if self.args.dataset == 'colsim':
+                    depth_path = os.path.join(gt_path, sample_path.split()[0].split('/')[0], sample_path.split()[1])
                 has_valid_depth = False
                 try:
-                    depth_gt = Image.open(depth_path)
+                    # depth_gt = Image.open(depth_path)
+                    depth_gt = np.array(Image.open(
+                        depth_path)) / 255 / 256  # please use this to load ground truth depth during training and testing
+                    depth_gt = Image.fromarray(depth_gt) # please use this to load ground truth depth during training and testing
+
+                    depth_gt = depth_gt.resize(newsize)
+
                     has_valid_depth = True
                 except IOError:
                     depth_gt = False
@@ -162,10 +177,10 @@ class DataLoadPreprocess(Dataset):
                 if has_valid_depth:
                     depth_gt = np.asarray(depth_gt, dtype=np.float32)
                     depth_gt = np.expand_dims(depth_gt, axis=2)
-                    if self.args.dataset == 'nyu':
-                        depth_gt = depth_gt / 1000.0
-                    else:
-                        depth_gt = depth_gt / 256.0
+                    # if self.args.dataset == 'nyu':
+                    #     depth_gt = depth_gt / 1000.0
+                    # else:
+                    #     depth_gt = depth_gt / max_max
 
             if self.args.do_kb_crop is True:
                 height = image.shape[0]
@@ -203,10 +218,10 @@ class DataLoadPreprocess(Dataset):
 
     def train_preprocess(self, image, depth_gt):
         # Random flipping
-        do_flip = random.random()
-        if do_flip > 0.5:
-            image = (image[:, ::-1, :]).copy()
-            depth_gt = (depth_gt[:, ::-1, :]).copy()
+        # do_flip = random.random()
+        # if do_flip > 0.5:
+        #     image = (image[:, ::-1, :]).copy()
+        #     depth_gt = (depth_gt[:, ::-1, :]).copy()
     
         # Random gamma, brightness, color augmentation
         do_augment = random.random()

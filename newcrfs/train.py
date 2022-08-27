@@ -13,11 +13,12 @@ from tqdm import tqdm
 
 from tensorboardX import SummaryWriter
 
+from convert_to_cm import convert_to_cm
 from utils import post_process_depth, flip_lr, silog_loss, compute_errors, eval_metrics, \
                        block_print, enable_print, normalize_result, inv_normalize, convert_arg_line_to_args
 from networks.NewCRFDepth import NewCRFDepth
 
-
+clip_error_for_display = 0.01
 parser = argparse.ArgumentParser(description='NeWCRFs PyTorch implementation.', fromfile_prefix_chars='@')
 parser.convert_arg_line_to_args = convert_arg_line_to_args
 
@@ -87,14 +88,14 @@ if sys.argv.__len__() == 2:
 else:
     args = parser.parse_args()
 
-if args.dataset == 'kitti' or args.dataset == 'nyu':
+if args.dataset == 'kitti'  or args.dataset == 'nyu' or args.dataset == 'colsim':
     from dataloaders.dataloader import NewDataLoader
 elif args.dataset == 'kittipred':
     from dataloaders.dataloader_kittipred import NewDataLoader
 
 
 def online_eval(model, dataloader_eval, gpu, ngpus, post_process=False):
-    eval_measures = torch.zeros(10).cuda(device=gpu)
+    eval_measures = torch.zeros(11).cuda(device=gpu)
     for _, eval_sample_batched in enumerate(tqdm(dataloader_eval.data)):
         with torch.no_grad():
             image = torch.autograd.Variable(eval_sample_batched['image'].cuda(gpu, non_blocking=True))
@@ -141,12 +142,14 @@ def online_eval(model, dataloader_eval, gpu, ngpus, post_process=False):
                 elif args.dataset == 'nyu':
                     eval_mask[45:471, 41:601] = 1
 
-            valid_mask = np.logical_and(valid_mask, eval_mask)
-
+            # valid_mask = np.logical_and(valid_mask, eval_mask)
+        pred_depth = convert_to_cm(pred_depth)
+        gt_depth = convert_to_cm(gt_depth)
+        assert pred_depth.max() < 1.0 or gt_depth.max() < 1.0, 'Bad data values!!! Erez'
         measures = compute_errors(gt_depth[valid_mask], pred_depth[valid_mask])
 
-        eval_measures[:9] += torch.tensor(measures).cuda(device=gpu)
-        eval_measures[9] += 1
+        eval_measures[:10] += torch.tensor(measures).cuda(device=gpu)
+        eval_measures[10] += 1
 
     if args.multiprocessing_distributed:
         group = dist.new_group([i for i in range(ngpus)])
@@ -154,15 +157,15 @@ def online_eval(model, dataloader_eval, gpu, ngpus, post_process=False):
 
     if not args.multiprocessing_distributed or gpu == 0:
         eval_measures_cpu = eval_measures.cpu()
-        cnt = eval_measures_cpu[9].item()
+        cnt = eval_measures_cpu[10].item()
         eval_measures_cpu /= cnt
         print('Computing errors for {} eval samples'.format(int(cnt)), ', post_process: ', post_process)
-        print("{:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}".format('silog', 'abs_rel', 'log10', 'rms',
-                                                                                     'sq_rel', 'log_rms', 'd1', 'd2',
+        print("{:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>5}, {:>5}, {:>5}".format('silog', 'abs_rel', 'log10', 'rms',
+                                                                                     'sq_rel', 'log_rms','avg_error', 'd1', 'd2',
                                                                                      'd3'))
-        for i in range(8):
+        for i in range(9):
             print('{:7.4f}, '.format(eval_measures_cpu[i]), end='')
-        print('{:7.4f}'.format(eval_measures_cpu[8]))
+        print('{:7.4f}'.format(eval_measures_cpu[9]))
         return eval_measures_cpu
 
     return None
@@ -210,9 +213,9 @@ def main_worker(gpu, ngpus_per_node, args):
         print("== Model Initialized")
 
     global_step = 0
-    best_eval_measures_lower_better = torch.zeros(6).cpu() + 1e3
+    best_eval_measures_lower_better = torch.zeros(7).cpu() + 1e3
     best_eval_measures_higher_better = torch.zeros(3).cpu()
-    best_eval_steps = np.zeros(9, dtype=np.int32)
+    best_eval_steps = np.zeros(10, dtype=np.int32)
 
     # Training parameters
     optimizer = torch.optim.Adam([{'params': model.module.parameters()}],
@@ -298,8 +301,9 @@ def main_worker(gpu, ngpus_per_node, args):
             if args.dataset == 'nyu':
                 mask = depth_gt > 0.1
             else:
-                mask = depth_gt > 1.0
+                mask = depth_gt > 0.00001
 
+            # mask = torch.ones_like(depth_gt)
             loss = silog_criterion.forward(depth_est, depth_gt, mask.to(torch.bool))
             loss.backward()
             for param_group in optimizer.param_groups:
@@ -330,14 +334,29 @@ def main_worker(gpu, ngpus_per_node, args):
 
                 if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                                                             and args.rank % ngpus_per_node == 0):
+
                     writer.add_scalar('silog_loss', loss, global_step)
                     writer.add_scalar('learning_rate', current_lr, global_step)
                     writer.add_scalar('var average', var_sum.item()/var_cnt, global_step)
-                    depth_gt = torch.where(depth_gt < 1e-3, depth_gt * 0 + 1e3, depth_gt)
+                    depth_gt_clip = torch.where(depth_gt < 1e-3, depth_gt * 0 + 1e3, depth_gt)
+                    avg_error = torch.tensor(0).float()
+                    abs_rel = 0
                     for i in range(num_log_images):
-                        writer.add_image('depth_gt/image/{}'.format(i), normalize_result(1/depth_gt[i, :, :, :].data), global_step)
+                        measures = compute_errors(depth_gt[0][mask[0]].detach().squeeze().cpu().numpy(), depth_est[0][mask[0]].detach().squeeze().cpu().numpy())
+                        print(f'trainig - abs_rel  {measures[1]}')
+                        abs_rel += measures[1]
+                        error = torch.abs(depth_gt[i, :, :, :].data - depth_est[i, :, :, :].data)
+                        avg_error += error[mask[0]].cpu().mean()
+                        print(f'trainig - avg _error before clipping  {error[mask[0]].cpu().mean()}')
+                        error[error>clip_error_for_display] = 1.0
+                        print(f'trainig - avg _error after clipping  {error[mask[0]].cpu().mean()}')
+                        writer.add_image('error/image/{}'.format(i), error, global_step)
+                        writer.add_image('depth_gt/image/{}'.format(i), normalize_result(1/depth_gt_clip[i, :, :, :].data), global_step)
                         writer.add_image('depth_est/image/{}'.format(i), normalize_result(1/depth_est[i, :, :, :].data), global_step)
                         writer.add_image('image/image/{}'.format(i), inv_normalize(image[i, :, :, :]).data, global_step)
+                    writer.add_scalar('avg_error', avg_error.item() / num_log_images, global_step)
+                    writer.add_scalar('abs_rel', abs_rel / num_log_images, global_step)
+
                     writer.flush()
 
             if args.do_online_eval and global_step and global_step % args.eval_freq == 0 and not model_just_loaded:
@@ -346,17 +365,18 @@ def main_worker(gpu, ngpus_per_node, args):
                 with torch.no_grad():
                     eval_measures = online_eval(model, dataloader_eval, gpu, ngpus_per_node, post_process=True)
                 if eval_measures is not None:
-                    for i in range(9):
+                    for i in range(1):
+                        i=1
                         eval_summary_writer.add_scalar(eval_metrics[i], eval_measures[i].cpu(), int(global_step))
                         measure = eval_measures[i]
                         is_best = False
-                        if i < 6 and measure < best_eval_measures_lower_better[i]:
+                        if i < 7 and measure < best_eval_measures_lower_better[i]:
                             old_best = best_eval_measures_lower_better[i].item()
                             best_eval_measures_lower_better[i] = measure.item()
                             is_best = True
-                        elif i >= 6 and measure > best_eval_measures_higher_better[i-6]:
-                            old_best = best_eval_measures_higher_better[i-6].item()
-                            best_eval_measures_higher_better[i-6] = measure.item()
+                        elif i >= 7 and measure > best_eval_measures_higher_better[i-7]:
+                            old_best = best_eval_measures_higher_better[i-7].item()
+                            best_eval_measures_higher_better[i-7] = measure.item()
                             is_best = True
                         if is_best:
                             old_best_step = best_eval_steps[i]
@@ -375,7 +395,15 @@ def main_worker(gpu, ngpus_per_node, args):
                                           'best_eval_measures_lower_better': best_eval_measures_lower_better,
                                           'best_eval_steps': best_eval_steps
                                           }
-                            torch.save(checkpoint, args.log_directory + '/' + args.model_name + model_save_name)
+                            torch.save(checkpoint, args.log_directory + '/' + args.model_name + model_save_name + '.ckpt')
+                        checkpoint = {'global_step': global_step,
+                                      'model': model.state_dict(),
+                                      'optimizer': optimizer.state_dict(),
+                                      'best_eval_measures_higher_better': best_eval_measures_higher_better,
+                                      'best_eval_measures_lower_better': best_eval_measures_lower_better,
+                                      'best_eval_steps': best_eval_steps
+                                      }
+                        torch.save(checkpoint, args.log_directory + '/' + args.model_name + '/model_latest' + '.ckpt')
                     eval_summary_writer.flush()
                 model.train()
                 block_print()

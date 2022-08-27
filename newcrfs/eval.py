@@ -4,8 +4,10 @@ import torch.backends.cudnn as cudnn
 import os, sys
 import argparse
 import numpy as np
+from matplotlib import pyplot as plt
 from tqdm import tqdm
 
+from convert_to_cm import convert_to_cm
 from utils import post_process_depth, flip_lr, compute_errors
 from networks.NewCRFDepth import NewCRFDepth
 
@@ -44,6 +46,7 @@ parser.add_argument('--min_depth_eval',            type=float, help='minimum dep
 parser.add_argument('--max_depth_eval',            type=float, help='maximum depth for evaluation', default=80)
 parser.add_argument('--eigen_crop',                            help='if set, crops according to Eigen NIPS14', action='store_true')
 parser.add_argument('--garg_crop',                             help='if set, crops according to Garg  ECCV16', action='store_true')
+parser.add_argument('--num_threads',               type=int,   help='number of threads to use for data loading', default=1)
 
 
 if sys.argv.__len__() == 2:
@@ -52,14 +55,14 @@ if sys.argv.__len__() == 2:
 else:
     args = parser.parse_args()
 
-if args.dataset == 'kitti' or args.dataset == 'nyu':
+if args.dataset == 'kitti' or args.dataset == 'nyu' or args.dataset == 'colsim':
     from dataloaders.dataloader import NewDataLoader
 elif args.dataset == 'kittipred':
     from dataloaders.dataloader_kittipred import NewDataLoader
 
 
 def eval(model, dataloader_eval, post_process=False):
-    eval_measures = torch.zeros(10).cuda()
+    eval_measures = torch.zeros(11).cuda()
     for _, eval_sample_batched in enumerate(tqdm(dataloader_eval.data)):
         with torch.no_grad():
             image = torch.autograd.Variable(eval_sample_batched['image'].cuda())
@@ -70,6 +73,10 @@ def eval(model, dataloader_eval, post_process=False):
                 continue
 
             pred_depth = model(image)
+            # plt.imshow(pred_depth.detach().squeeze().cpu().numpy())
+            # plt.show()
+            # plt.imshow(gt_depth.detach().squeeze().cpu().numpy())
+            # plt.show()
             if post_process:
                 image_flipped = flip_lr(image)
                 pred_depth_flipped = model(image_flipped)
@@ -93,36 +100,37 @@ def eval(model, dataloader_eval, post_process=False):
 
         valid_mask = np.logical_and(gt_depth > args.min_depth_eval, gt_depth < args.max_depth_eval)
 
-        if args.garg_crop or args.eigen_crop:
-            gt_height, gt_width = gt_depth.shape
-            eval_mask = np.zeros(valid_mask.shape)
+        # if args.garg_crop or args.eigen_crop:
+        #     gt_height, gt_width = gt_depth.shape
+        #     eval_mask = np.zeros(valid_mask.shape)
 
-            if args.garg_crop:
-                eval_mask[int(0.40810811 * gt_height):int(0.99189189 * gt_height), int(0.03594771 * gt_width):int(0.96405229 * gt_width)] = 1
+            # if args.garg_crop:
+            #     eval_mask[int(0.40810811 * gt_height):int(0.99189189 * gt_height), int(0.03594771 * gt_width):int(0.96405229 * gt_width)] = 1
+            #
+            # elif args.eigen_crop:
+            #     if args.dataset == 'kitti':
+            #         eval_mask[int(0.3324324 * gt_height):int(0.91351351 * gt_height), int(0.0359477 * gt_width):int(0.96405229 * gt_width)] = 1
+            #     elif args.dataset == 'nyu':
+            #         eval_mask[45:471, 41:601] = 1
 
-            elif args.eigen_crop:
-                if args.dataset == 'kitti':
-                    eval_mask[int(0.3324324 * gt_height):int(0.91351351 * gt_height), int(0.0359477 * gt_width):int(0.96405229 * gt_width)] = 1
-                elif args.dataset == 'nyu':
-                    eval_mask[45:471, 41:601] = 1
-
-            valid_mask = np.logical_and(valid_mask, eval_mask)
-
+            # valid_mask = np.logical_and(valid_mask, eval_mask)
+        pred_depth = convert_to_cm(pred_depth)
+        gt_depth = convert_to_cm(gt_depth)
         measures = compute_errors(gt_depth[valid_mask], pred_depth[valid_mask])
 
-        eval_measures[:9] += torch.tensor(measures).cuda()
-        eval_measures[9] += 1
+        eval_measures[:10] += torch.tensor(measures).cuda()
+        eval_measures[10] += 1
 
     eval_measures_cpu = eval_measures.cpu()
     cnt = eval_measures_cpu[9].item()
     eval_measures_cpu /= cnt
     print('Computing errors for {} eval samples'.format(int(cnt)), ', post_process: ', post_process)
     print("{:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}".format('silog', 'abs_rel', 'log10', 'rms',
-                                                                                    'sq_rel', 'log_rms', 'd1', 'd2',
+                                                                                    'sq_rel', 'log_rms','avg_error', 'd1', 'd2',
                                                                                     'd3'))
-    for i in range(8):
+    for i in range(9):
         print('{:7.4f}, '.format(eval_measures_cpu[i]), end='')
-    print('{:7.4f}'.format(eval_measures_cpu[8]))
+    print('{:7.4f}'.format(eval_measures_cpu[9]))
     return eval_measures_cpu
 
 
