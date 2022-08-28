@@ -12,7 +12,7 @@
 --learning_rate 2e-5
 --weight_decay 1e-2
 --adam_eps 1e-3
---num_threads 0
+--num_threads 1
 --input_height 480
 --input_width 640
 --max_depth 1
@@ -20,7 +20,7 @@
 --dist_url tcp://127.0.0.1:2345
 --log_freq 20000
 --do_online_eval
---eval_freq 20000
+--eval_freq 2000
 --data_path_eval Data
 --gt_path_eval Data
 --filenames_file_eval data_splits/colsim_test_files_with_gt.txt
