@@ -152,7 +152,8 @@ class DataLoadPreprocess(Dataset):
             image = Image.open(image_path).convert("RGB")
             newsize = (640, 480)
             image = image.resize(newsize)
-            image = np.asarray(image, dtype=np.float32)
+            image = np.asarray(image, dtype=np.float32)/ 255.0
+
             if self.mode == 'online_eval':
                 gt_path = self.args.gt_path_eval
                 depth_path = os.path.join(gt_path, "./" + sample_path.split()[1])

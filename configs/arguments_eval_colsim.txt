@@ -12,4 +12,4 @@
 --max_depth_eval 1
 --eigen_crop
 
---checkpoint_path models/newcrfs_nyu/model_latest.ckpt
+--checkpoint_path model_zoo/model_latest.ckpt

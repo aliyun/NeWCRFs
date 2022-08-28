@@ -117,12 +117,18 @@ def eval(model, dataloader_eval, post_process=False):
         pred_depth = convert_to_cm(pred_depth)
         gt_depth = convert_to_cm(gt_depth)
         measures = compute_errors(gt_depth[valid_mask], pred_depth[valid_mask])
+        # print("{:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}".format('silog', 'abs_rel', 'log10', 'rms',
+        #                                                                              'sq_rel', 'log_rms', 'avg_error',
+        #                                                                              'd1', 'd2',
+        #                                                                              'd3'))
+        # for i in range(9):
+        #     print('{:7.4f}, '.format(measures[i]), end='')
 
         eval_measures[:10] += torch.tensor(measures).cuda()
         eval_measures[10] += 1
 
     eval_measures_cpu = eval_measures.cpu()
-    cnt = eval_measures_cpu[9].item()
+    cnt = eval_measures_cpu[10].item()
     eval_measures_cpu /= cnt
     print('Computing errors for {} eval samples'.format(int(cnt)), ', post_process: ', post_process)
     print("{:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}, {:>7}".format('silog', 'abs_rel', 'log10', 'rms',
