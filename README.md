@@ -42,6 +42,11 @@ If you find this code useful in your research, please cite:
 6. [Demo](#demo)
 
 ## Installation
+Use environment.yml file to install 
+```
+conda env create -f environment.yml
+```
+Or install yourself
 ```
 conda create -n newcrfs python=3.8
 conda activate newcrfs
