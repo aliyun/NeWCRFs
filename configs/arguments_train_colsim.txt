@@ -26,4 +26,5 @@
 --min_depth_eval 1e-3
 --max_depth_eval 1
 --eigen_crop
---experiment_name exp_no_DoG_aug
+--experiment_name init_and_dog_6_epochs
+--do_dog

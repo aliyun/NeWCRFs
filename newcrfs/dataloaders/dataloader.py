@@ -135,7 +135,7 @@ class DataLoadPreprocess(Dataset):
             if self.args.do_dog is True:
                 do_dog = random.random()
                 if do_dog > 0.5:
-                    image = TT_preprocess_multi_lvl_rgb(image,scaling_sigs=2,alpha=10)
+                    image = (TT_preprocess_multi_lvl_rgb(image,scaling_sigs=2,alpha=10) / 255.0).astype(np.float32)
             depth_gt = np.asarray(depth_gt, dtype=np.float32)
             depth_gt = np.expand_dims(depth_gt, axis=2)
 
