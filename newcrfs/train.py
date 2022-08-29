@@ -18,7 +18,8 @@ from utils import post_process_depth, flip_lr, silog_loss, compute_errors, eval_
                        block_print, enable_print, normalize_result, inv_normalize, convert_arg_line_to_args
 from networks.NewCRFDepth import NewCRFDepth
 
-clip_error_for_display = 0.01
+abs_rel_display_th = 0.05
+
 parser = argparse.ArgumentParser(description='NeWCRFs PyTorch implementation.', fromfile_prefix_chars='@')
 parser.convert_arg_line_to_args = convert_arg_line_to_args
 
@@ -95,7 +96,10 @@ if args.dataset == 'kitti'  or args.dataset == 'nyu' or args.dataset == 'colsim'
 elif args.dataset == 'kittipred':
     from dataloaders.dataloader_kittipred import NewDataLoader
 
-
+def clim_abs_rel(abs_rel,th):
+    abs_rel[abs_rel>th]=th
+    abs_rel*=(1/th)
+    return abs_rel
 def online_eval(model, dataloader_eval, gpu, ngpus, post_process=False):
     eval_measures = torch.zeros(11).cuda(device=gpu)
     for _, eval_sample_batched in enumerate(tqdm(dataloader_eval.data)):
@@ -348,16 +352,16 @@ def main_worker(gpu, ngpus_per_node, args):
                         measures = compute_errors(depth_gt[0][mask[0]].detach().squeeze().cpu().numpy(), depth_est[0][mask[0]].detach().squeeze().cpu().numpy())
                         print(f'trainig - abs_rel  {measures[1]}')
                         abs_rel += measures[1]
-                        error = torch.abs(depth_gt[i, :, :, :].data - depth_est[i, :, :, :].data)
-                        avg_error += error[mask[0]].cpu().mean()
-                        print(f'trainig - avg _error before clipping  {error[mask[0]].cpu().mean()}')
-                        error[error>clip_error_for_display] = 1.0
-                        print(f'trainig - avg _error after clipping  {error[mask[0]].cpu().mean()}')
-                        writer.add_image('error/image/{}'.format(i), error, global_step)
+                        # error = torch.abs(depth_gt[i, :, :, :].data - depth_est[i, :, :, :].data)
+                        abs_rel_error_image = ((torch.abs(depth_gt[i, :, :, :].data  - depth_est[i, :, :, :].data) / depth_gt[i, :, :, :].data) * mask[0])
+                        abs_rel_error_image = clim_abs_rel(abs_rel_error_image,abs_rel_display_th)
+                        # avg_error += error[mask[0]].cpu().mean()
+
+                        writer.add_image('abs_rel_error_image/image/{}'.format(i), abs_rel_error_image, global_step)
                         writer.add_image('depth_gt/image/{}'.format(i), normalize_result(1/depth_gt_clip[i, :, :, :].data), global_step)
                         writer.add_image('depth_est/image/{}'.format(i), normalize_result(1/depth_est[i, :, :, :].data), global_step)
                         writer.add_image('image/image/{}'.format(i), inv_normalize(image[i, :, :, :]).data, global_step)
-                    writer.add_scalar('avg_error', avg_error.item() / num_log_images, global_step)
+                    # writer.add_scalar('avg_error', avg_error.item() / num_log_images, global_step)
                     writer.add_scalar('abs_rel', abs_rel / num_log_images, global_step)
 
                     writer.flush()
