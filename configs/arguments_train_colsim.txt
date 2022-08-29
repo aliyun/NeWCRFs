@@ -2,7 +2,6 @@
 --model_name newcrfs_nyu
 --encoder large07
 --pretrain model_zoo/swin_transformer/swin_large_patch4_window7_224_22k.pth
---checkpoint_path model_zoo/model_latest.ckpt
 --dataset colsim
 --data_path Data
 --gt_path Data
@@ -20,10 +19,11 @@
 --dist_url tcp://127.0.0.1:2345
 --log_freq 20000
 --do_online_eval
---eval_freq 2000
+--eval_freq 20000
 --data_path_eval Data
 --gt_path_eval Data
 --filenames_file_eval data_splits/colsim_test_files_with_gt.txt
 --min_depth_eval 1e-3
 --max_depth_eval 1
 --eigen_crop
+--experiment_name exp_no_DoG_aug

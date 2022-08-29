@@ -10,6 +10,9 @@ import random
 
 from utils import DistributedSamplerNoEvenlyDivisible
 
+from img_utils.utils import TT_preprocess_multi_lvl_rgb,TT_preprocess_multi_lvl
+
+
 # max_max =  45000. / 255
 def _is_pil_image(img):
     return isinstance(img, Image.Image)
@@ -129,6 +132,10 @@ class DataLoadPreprocess(Dataset):
                 depth_gt = self.rotate_image(depth_gt, random_angle, flag=Image.NEAREST)
             
             image = np.asarray(image, dtype=np.float32) / 255.0
+            if self.args.do_dog is True:
+                do_dog = random.random()
+                if do_dog > 0.5:
+                    image = TT_preprocess_multi_lvl_rgb(image,scaling_sigs=2,alpha=10)
             depth_gt = np.asarray(depth_gt, dtype=np.float32)
             depth_gt = np.expand_dims(depth_gt, axis=2)
 

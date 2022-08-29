@@ -23,6 +23,7 @@ parser = argparse.ArgumentParser(description='NeWCRFs PyTorch implementation.', 
 parser.convert_arg_line_to_args = convert_arg_line_to_args
 
 parser.add_argument('--mode',                      type=str,   help='train or test', default='train')
+parser.add_argument('--experiment_name',           type=str,   help='experiment_name', default='exp')
 parser.add_argument('--model_name',                type=str,   help='model name', default='newcrfs')
 parser.add_argument('--encoder',                   type=str,   help='type of encoder, base07, large07', default='large07')
 parser.add_argument('--pretrain',                  type=str,   help='path of pretrained encoder', default=None)
@@ -51,6 +52,7 @@ parser.add_argument('--num_epochs',                type=int,   help='number of e
 parser.add_argument('--learning_rate',             type=float, help='initial learning rate', default=1e-4)
 parser.add_argument('--end_learning_rate',         type=float, help='end learning rate', default=-1)
 parser.add_argument('--variance_focus',            type=float, help='lambda in paper: [0, 1], higher value more focus on minimizing variance of error', default=0.85)
+parser.add_argument('--do_dog',                             help='if set, will randomly use DoG images to train', action='store_true')
 
 # Preprocessing
 parser.add_argument('--do_random_rotate',                      help='if set, will perform random rotation for augmentation', action='store_true')
@@ -260,12 +262,12 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # Logging
     if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
-        writer = SummaryWriter(args.log_directory + '/' + args.model_name + '/summaries', flush_secs=30)
+        writer = SummaryWriter(args.log_directory + '/' + args.model_name + '/summaries/' + args.experiment_name, flush_secs=30)
         if args.do_online_eval:
             if args.eval_summary_directory != '':
                 eval_summary_path = os.path.join(args.eval_summary_directory, args.model_name)
             else:
-                eval_summary_path = os.path.join(args.log_directory, args.model_name, 'eval')
+                eval_summary_path = os.path.join(args.log_directory, args.model_name, 'eval',args.experiment_name)
             eval_summary_writer = SummaryWriter(eval_summary_path, flush_secs=30)
 
     silog_criterion = silog_loss(variance_focus=args.variance_focus)
