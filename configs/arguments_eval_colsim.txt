@@ -7,9 +7,9 @@
 --num_threads 1
 --data_path_eval Data
 --gt_path_eval Data
---filenames_file_eval data_splits/colsim_test_files_with_gt.txt
+--filenames_file_eval data_splits/colsim_valid_files_with_gt.txt
 --min_depth_eval 1e-3
 --max_depth_eval 1
 --eigen_crop
 
---checkpoint_path model_zoo/model_latest.ckpt
+--checkpoint_path /mnt/data/miscellaneous/FromErez/temps/NeWCRF/model_zoo/model-70000-best_abs_rel_0.01873.ckpt

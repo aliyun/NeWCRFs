@@ -32,7 +32,7 @@ parser.add_argument('--data_path', type=str, help='path to the data', required=T
 parser.add_argument('--filenames_file', type=str, help='path to the filenames text file', required=True)
 parser.add_argument('--input_height', type=int, help='input height', default=480)
 parser.add_argument('--input_width', type=int, help='input width', default=640)
-parser.add_argument('--max_depth', type=float, help='maximum depth in estimation', default=10)
+parser.add_argument('--max_depth', type=float, help='maximum depth in estimation', default=1)
 parser.add_argument('--checkpoint_path', type=str, help='path to a specific checkpoint to load', default='')
 parser.add_argument('--dataset', type=str, help='dataset to train on', default='nyu')
 parser.add_argument('--do_kb_crop', help='if set, crop input images as kitti benchmark images', action='store_true')
@@ -97,6 +97,7 @@ def test(params):
                 depth_est = post_process_depth(depth_est, depth_est_flipped)
 
             pred_depth = depth_est.cpu().numpy().squeeze()
+            pred_depth = cv2.resize(pred_depth, (475, 475), interpolation=cv2.INTER_NEAREST)
 
             if args.do_kb_crop:
                 height, width = 352, 1216
@@ -147,24 +148,24 @@ def test(params):
             filename_gt_png = save_name + '/gt/' + scene_name + '_' + lines[s].split()[0].split('/rgb_')[1].replace(
                 '.jpg', '_gt.png')
             filename_image_png = save_name + '/rgb/' + scene_name + '_' + lines[s].split()[0].split('/rgb_')[1]
-        
+
         rgb_path = os.path.join(args.data_path, './' + lines[s].split()[0])
         image = cv2.imread(rgb_path)
         if args.dataset == 'nyu':
             gt_path = os.path.join(args.data_path, './' + lines[s].split()[1])
             gt = cv2.imread(gt_path, -1).astype(np.float32) / 1000.0  # Visualization purpose only
             gt[gt == 0] = np.amax(gt)
-        
+
         pred_depth = pred_depths[s]
-        
+
         if args.dataset == 'kitti' or args.dataset == 'kittipred':
             pred_depth_scaled = pred_depth * 256.0
         else:
             pred_depth_scaled = pred_depth * 1000.0
-        
+
         pred_depth_scaled = pred_depth_scaled.astype(np.uint16)
         cv2.imwrite(filename_pred_png, pred_depth_scaled, [cv2.IMWRITE_PNG_COMPRESSION, 0])
-        
+
         if args.save_viz:
             cv2.imwrite(filename_image_png, image[10:-1 - 9, 10:-1 - 9, :])
             if args.dataset == 'nyu':

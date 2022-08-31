@@ -17,7 +17,7 @@
 --max_depth 1
 --log_directory ./models/
 --dist_url tcp://127.0.0.1:2345
---log_freq 20000
+--log_freq 5000
 --do_online_eval
 --eval_freq 20000
 --data_path_eval Data
@@ -28,3 +28,4 @@
 --eigen_crop
 --experiment_name init_and_dog_6_epochs
 --do_dog
+--checkpoint_path /mnt/data/miscellaneous/FromErez/temps/NeWCRF/model_zoo/model-70000-best_abs_rel_0.01873.ckpt
