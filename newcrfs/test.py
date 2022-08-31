@@ -44,7 +44,7 @@ if sys.argv.__len__() == 2:
 else:
     args = parser.parse_args()
 
-if args.dataset == 'kitti' or args.dataset == 'nyu':
+if args.dataset == 'kitti' or args.dataset == 'nyu' or args.dataset == 'colsim':
     from dataloaders.dataloader import NewDataLoader
 elif args.dataset == 'kittipred':
     from dataloaders.dataloader_kittipred import NewDataLoader
@@ -128,6 +128,12 @@ def test(params):
                 raise
     
     for s in tqdm(range(num_test_samples)):
+
+        if args.dataset == 'colsim':
+
+            filename_pred_png = save_name + '/raw/' + date_drive + '_' + lines[s].split()[0].split('/')[-1].replace(
+                '.jpg', '.png')
+            np.save(filename_pred_png,)
         if args.dataset == 'kitti':
             date_drive = lines[s].split('/')[1]
             filename_pred_png = save_name + '/raw/' + date_drive + '_' + lines[s].split()[0].split('/')[-1].replace(
