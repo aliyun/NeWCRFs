@@ -22,7 +22,7 @@
 --eval_freq 20000
 --data_path_eval Data
 --gt_path_eval Data
---filenames_file_eval data_splits/colsim_test_files_with_gt.txt
+--filenames_file_eval data_splits/colsim_valid_files_with_gt.txt
 --min_depth_eval 1e-3
 --max_depth_eval 1
 --eigen_crop
