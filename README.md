@@ -54,7 +54,17 @@ conda activate newcrfs
 conda install pytorch==1.10.0 torchvision==0.11.0 torchaudio==0.10.0 cudatoolkit=11.3 -c pytorch -c conda-forge
 pip install matplotlib, tqdm, tensorboardX, timm, mmcv
 ```
+### Docker build and Run
+To build the docker your code directory should be in the same folder as the docker file in a sub folder names 'src' and then run the command
+```
+docker build -t simcol .
+```
 
+To run the docker:
+```
+nvidia-docker run --rm --name=simcol -it simcol
+
+```
 
 ## Datasets
 You can prepare the datasets KITTI and NYUv2 according to [here](https://github.com/cleinc/bts), and then modify the data path in the config files to your dataset locations.
